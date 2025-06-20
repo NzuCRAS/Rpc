@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
 
-public class ZooKeeperServiceDiscovery {
+public class ZooKeeperServiceDiscovery implements ServiceDiscovery {
     private final ZooKeeper zooKeeper;
 
     public ZooKeeperServiceDiscovery(String connectString) throws Exception {

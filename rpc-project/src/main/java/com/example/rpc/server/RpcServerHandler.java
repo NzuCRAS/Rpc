@@ -2,27 +2,30 @@ package com.example.rpc.server;
 
 import com.example.rpc.protocol.JsonSerializer;
 import com.example.rpc.protocol.RpcMessage;
+import com.example.rpc.protocol.RpcMessageDecoder;
+import com.example.rpc.registry.ServiceDiscovery;
 import com.example.rpc.registry.ZooKeeperServiceDiscovery;
 import com.example.rpc.registry.ZooKeeperServiceRegistry;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.SimpleChannelInboundHandler;
 
 import java.lang.reflect.Method;
 import java.util.List;
 
-public class RpcServerHandler extends ChannelInboundHandlerAdapter {
-    private final ZooKeeperServiceDiscovery serviceDiscovery;
+public class RpcServerHandler extends SimpleChannelInboundHandler<RpcMessage> {
+    private final ServiceDiscovery serviceDiscovery;
 
-    public RpcServerHandler(ZooKeeperServiceDiscovery serviceDiscovery) {
+    public RpcServerHandler(ServiceDiscovery serviceDiscovery) {
         this.serviceDiscovery = serviceDiscovery;
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    public void channelRead0(ChannelHandlerContext ctx, RpcMessage msg) throws Exception {
         System.out.println("server receive request: " + msg);
 
         // 将收集到的消息反序列化为 RpcMessage 对象
-        RpcMessage request = JsonSerializer.deserialize((String)msg, RpcMessage.class);
+        RpcMessage request = (new JsonSerializer()).deserialize(msg, RpcMessage.class);
 
         // 模拟处理请求
         RpcMessage response = new RpcMessage();

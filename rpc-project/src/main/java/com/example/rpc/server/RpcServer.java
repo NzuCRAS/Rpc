@@ -1,8 +1,10 @@
 package com.example.rpc.server;
 
+import com.example.rpc.protocol.*;
+import com.example.rpc.registry.ServiceDiscovery;
+import com.example.rpc.registry.ServiceRegistry;
 import com.example.rpc.registry.ZooKeeperServiceDiscovery;
 import com.example.rpc.registry.ZooKeeperServiceRegistry;
-import com.example.rpc.service.HelloService;
 import com.example.rpc.service.HelloServiceImpl;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
@@ -10,16 +12,13 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.sctp.nio.NioSctpServerChannel;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.string.StringDecoder;
-import io.netty.handler.codec.string.StringEncoder;
 
 public class RpcServer {
     private final int port; // 端口号
-    private final ZooKeeperServiceRegistry serviceRegistry; // 实现注册服务 用这个给注册表管理可用的服务
-    private final ZooKeeperServiceDiscovery serviceDiscovery; // 实例发现
+    private final ServiceRegistry serviceRegistry; // 实现注册服务 用这个给注册表管理可用的服务
+    private final ServiceDiscovery serviceDiscovery; // 实例发现
 
     public RpcServer(int port, String zooKeeperAddress) throws Exception {
         this.port = port;
@@ -30,6 +29,9 @@ public class RpcServer {
     public void start() throws Exception {
         // 服务地址
         String serviceAddress = "127.0.0.1:" + port;
+
+        // 可更换配置序列化/反序列化所用的协议
+        final Serializer serializer = new JsonSerializer();
 
         // 注册服务到 ZooKeeper
         serviceRegistry.register("HelloService", serviceAddress);
@@ -52,8 +54,8 @@ public class RpcServer {
                         // SocketChannel 连接到TCP网络套接字的通道 面向流连接
                         // 这里就是把SocketChannel 通过自定义方法进行操作 比如自定义处理器
                         protected void initChannel(SocketChannel ch) {
-                            ch.pipeline().addLast(new StringDecoder());
-                            ch.pipeline().addLast(new StringEncoder());
+                            ch.pipeline().addLast(new RpcMessageDecoder(serializer, RpcMessage.class));
+                            ch.pipeline().addLast(new RpcMessageEncoder(serializer));
                             ch.pipeline().addLast(new RpcServerHandler(serviceDiscovery)); // 自定义处理器
                         }
                     });

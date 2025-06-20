@@ -1,8 +1,6 @@
 package com.example.rpc.client;
 
 import com.example.rpc.registry.ZooKeeperServiceDiscovery;
-import com.example.rpc.registry.ZooKeeperServiceRegistry;
-import com.example.rpc.service.HelloService;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -10,9 +8,6 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.string.StringDecoder;
 import io.netty.handler.codec.string.StringEncoder;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 public class RpcClient {
     private final ZooKeeperServiceDiscovery serviceDiscovery;

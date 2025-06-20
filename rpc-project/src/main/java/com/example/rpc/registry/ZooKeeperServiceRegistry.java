@@ -8,7 +8,7 @@ import org.apache.zookeeper.ZooKeeper;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystemNotFoundException;
 
-public class ZooKeeperServiceRegistry {
+public class ZooKeeperServiceRegistry implements ServiceRegistry {
     private static final int SESSION_TIMEOUT = 5000; // 会话超时时间
     private final ZooKeeper zooKeeper;
 
