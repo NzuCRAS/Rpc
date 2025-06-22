@@ -71,6 +71,7 @@ public class RpcServerHandler extends SimpleChannelInboundHandler<RpcMessage> {
             // 关闭超时连接
             ctx.close();
         } else {
+            System.out.println("Server IdleStateEvent");
             // 将事件继续传递给下一个Handler,是Handler链中的一种"事件回调"机制
             // 在自定义的pipeline责任链中每一个Handler都只处理自己关心的事件,而调用这个函数就是证明自己不关心当前事件,把当前的事件交给下一个Handler
             super.userEventTriggered(ctx, evt);

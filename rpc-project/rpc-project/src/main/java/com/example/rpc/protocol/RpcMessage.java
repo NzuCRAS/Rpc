@@ -9,6 +9,7 @@ public class RpcMessage implements Serializable {
     private Object[] params; // 参数
     private Object result;
     private String error; // 错误信息
+    private String requestId;
 
     public RpcMessage() {} // 构造器
 
@@ -59,6 +60,10 @@ public class RpcMessage implements Serializable {
     public void setError(String error) {
         this.error = error;
     }
+
+    public String getRequestId() {return requestId;}
+
+    public void setRequestId(String requestId) {this.requestId = requestId;}
 
     @Override
     public String toString() {

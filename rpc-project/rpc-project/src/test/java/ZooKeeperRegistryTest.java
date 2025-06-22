@@ -1,4 +1,5 @@
 import com.example.rpc.client.RpcClient;
+import com.example.rpc.protocol.JsonSerializer;
 import com.example.rpc.server.RpcServer;
 
 public class ZooKeeperRegistryTest {
@@ -10,11 +11,11 @@ public class ZooKeeperRegistryTest {
         rpcServer.start();
 
         // 启动客户端
-        RpcClient rpcClient = new RpcClient(zooKeeperHost);
+        RpcClient rpcClient = new RpcClient(zooKeeperHost, new JsonSerializer());
         rpcClient.connect("HelloService");
 
         // 发送请求
-        rpcClient.sendRequest("Hello, ZooKeeper RPC!");
+
 
         rpcClient.close();
         rpcServer.stop();

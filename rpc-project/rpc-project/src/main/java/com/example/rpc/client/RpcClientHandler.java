@@ -45,6 +45,7 @@ public class RpcClientHandler extends ChannelInboundHandlerAdapter {
             RpcMessage heartbeat = new RpcMessage();
             // 将RpcMessage类型定义为heartbeat方便判断
             heartbeat.setType("heartbeat");
+            System.out.println("Client Send Heartbeat");
             ctx.writeAndFlush(serializer.serialize(heartbeat));
         } else {
             // 心跳超时,调用
