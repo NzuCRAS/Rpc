@@ -7,7 +7,7 @@ import com.example.rpc.api.HelloService;
 public class RpcClientTest {
     public static void main(String[] args) throws Exception {
         String zooKeeperHost = "127.0.0.1:2181";
-        RpcServer rpcServer = new RpcServer(8080, zooKeeperHost);
+        RpcServer rpcServer = new RpcServer(8080, zooKeeperHost, new JsonSerializer());
        /* new Thread(rpcServer::start).start();*/
         // 连接 ZooKeeper 服务端监听的端口
         RpcClient rpcClient = new RpcClient(zooKeeperHost, new JsonSerializer());

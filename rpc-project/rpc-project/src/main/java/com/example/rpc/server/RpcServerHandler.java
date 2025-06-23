@@ -32,21 +32,26 @@ public class RpcServerHandler extends SimpleChannelInboundHandler<RpcMessage> {
         // 在RpcServer/Client中已经定义了
         RpcMessage request = (RpcMessage) msg;
 
+        if (request.getType().equals("heartbeat")) {
+            System.out.println("[Server Receive Heartbeat]");
+            return;
+        }
+
         // 模拟处理请求
         RpcMessage response = new RpcMessage();
         response.setType("response");
 
         try {
             // 从服务发现中获取服务实例
-            List<String> serviceInstance = serviceDiscovery.getService(request.getMethodName());
+            List<String> serviceInstance = serviceDiscovery.getService(request.getServiceName());
             if (serviceInstance == null) {
-                throw new RuntimeException("No service found for method: " + request.getMethodName());
+                throw new RuntimeException("No service found for method: " + request.getServiceName());
             }
 
             // 假设第一个服务实例是本地的实现(因为服务端调用的是本地实例)
-            Object service = LocalServiceRegistry.getInstance().getService(request.getMethodName());
+            Object service = LocalServiceRegistry.getInstance().getService(request.getServiceName());
             if (service == null) {
-                throw new RuntimeException("No Local service found for method: " + request.getMethodName());
+                throw new RuntimeException("No Local service found for method: " + request.getServiceName());
             }
 
             // 处理请求
@@ -60,9 +65,7 @@ public class RpcServerHandler extends SimpleChannelInboundHandler<RpcMessage> {
             System.out.println("Server Error:" + e.getMessage());
         }
 
-        // 将响应对象序列化为 JSON 字符串
-        String responseJson = Arrays.toString(serializer.serialize(response));
-        ctx.writeAndFlush(responseJson); // 将结果响应给客户端
+        ctx.writeAndFlush(response); // 将结果响应给客户端
     }
 
     @Override

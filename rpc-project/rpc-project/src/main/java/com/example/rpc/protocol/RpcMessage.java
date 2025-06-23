@@ -6,6 +6,7 @@ import java.io.Serializable;
 public class RpcMessage implements Serializable {
     private String type; // 消息类型 (request / response)
     private String methodName; // 请求的方法名
+    private String serviceName;
     private Object[] params; // 参数
     private Object result;
     private String error; // 错误信息
@@ -13,12 +14,13 @@ public class RpcMessage implements Serializable {
 
     public RpcMessage() {} // 构造器
 
-    public RpcMessage(String type, String methodName, Object[] params, Object result, String error) {
+    public RpcMessage(String type, String methodName, String serviceName, Object[] params, Object result, String error) {
         this.type = type;
         this.methodName = methodName;
         this.params = params;
         this.result = result;
         this.error = error;
+        this.serviceName = serviceName;
     }
 
     public String getType() {
@@ -36,6 +38,10 @@ public class RpcMessage implements Serializable {
     public void setMethodName(String methodName) {
         this.methodName = methodName;
     }
+
+    public String getServiceName() {return serviceName;}
+
+    public void setServiceName(String serviceName) {this.serviceName = serviceName;}
 
     public Object[] getParams() {
         return params;

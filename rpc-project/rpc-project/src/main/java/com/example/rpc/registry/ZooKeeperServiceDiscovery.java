@@ -22,9 +22,9 @@ public class ZooKeeperServiceDiscovery implements ServiceDiscovery {
 
     public String discover(String serviceName) throws Exception {
         // 获取服务节点
-        String servicePath = "/service/" + serviceName;
+        String servicePath = "/services/" + serviceName;
         if (zooKeeper.exists(servicePath, false) == null) {
-            throw new Exception("Service " + serviceName + " not found");
+            throw new Exception("Services " + serviceName + " not found");
         }
 
         // 获取所有子节点
@@ -42,7 +42,7 @@ public class ZooKeeperServiceDiscovery implements ServiceDiscovery {
     // 获取服务的所有实例地址
     public List<String> getService(String serviceName) throws Exception {
         // 获取服务节点路径
-        String servicePath = "/service/" + serviceName;
+        String servicePath = "/services/" + serviceName;
         if (zooKeeper.exists(servicePath, false) == null) {
             throw new Exception("Service -" + serviceName + "- not found");
         }
@@ -54,6 +54,7 @@ public class ZooKeeperServiceDiscovery implements ServiceDiscovery {
                     try {
                         // 获取子节点
                         String instancePath = servicePath + "/" + child;
+                        System.out.println("instancePath" + instancePath);
                         // 将数据转换成字节流
                         byte[] data = zooKeeper.getData(instancePath, false, null);
                         return new String(data, StandardCharsets.UTF_8);

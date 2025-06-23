@@ -1,8 +1,6 @@
 package com.example.rpc.client;
 
-import com.example.rpc.protocol.JsonSerializer;
-import com.example.rpc.protocol.RpcMessage;
-import com.example.rpc.protocol.Serializer;
+import com.example.rpc.protocol.*;
 import com.example.rpc.registry.ZooKeeperServiceDiscovery;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
@@ -59,10 +57,10 @@ public class RpcClient {
                     .handler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel ch) {
-                            ch.pipeline().addLast(new StringDecoder());
-                            ch.pipeline().addLast(new StringEncoder());
                             // 15秒无写操作,触发心跳(在RpcClientHandler中处理心跳)
-                            ch.pipeline().addLast(new IdleStateHandler(0, 15, 0, TimeUnit.SECONDS));
+                            ch.pipeline().addLast(new IdleStateHandler(0, 3, 0, TimeUnit.SECONDS));
+                            ch.pipeline().addLast(new RpcMessageDecoder(serializer, RpcMessage.class));
+                            ch.pipeline().addLast(new RpcMessageEncoder(serializer));
                             ch.pipeline().addLast(new RpcClientHandler(serializer));
                             // 客户端处理器
                         }
@@ -88,9 +86,7 @@ public class RpcClient {
         CompletableFuture<RpcMessage> future = new CompletableFuture<>();
         pendingRequest.put(requestId, future);
 
-        // 确定消息传递(在channel中)使用的是什么解码/编码工具以及编码格式
-        String requestJson = new String(serializer.serialize(request), StandardCharsets.UTF_8);
-        channel.writeAndFlush(requestJson);
+        channel.writeAndFlush(request);
 
         // 等待响应(设置超时时间)
         try {

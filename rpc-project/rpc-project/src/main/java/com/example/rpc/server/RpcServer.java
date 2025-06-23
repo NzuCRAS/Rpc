@@ -22,22 +22,21 @@ public class RpcServer {
     private final int port; // 端口号
     private final ServiceRegistry serviceRegistry; // 实现注册服务 用这个给注册表管理可用的服务
     private final ServiceDiscovery serviceDiscovery; // 实例发现
+    private final Serializer serializer; // 网络通信时学历恶化工具
 
-    public RpcServer(int port, String zooKeeperAddress) throws Exception {
+    public RpcServer(int port, String zooKeeperAddress, Serializer serializer) throws Exception {
         this.port = port;
         this.serviceRegistry = new ZooKeeperServiceRegistry(zooKeeperAddress);
         this.serviceDiscovery = new ZooKeeperServiceDiscovery(zooKeeperAddress);
+        this.serializer = serializer;
     }
 
-    public void start() throws Exception {
+    public void start(String serviceName) throws Exception {
         // 服务地址
         String serviceAddress = "127.0.0.1:" + port;
 
-        // 可更换配置序列化/反序列化所用的协议
-        final Serializer serializer = new JsonSerializer();
-
         // 注册服务到 ZooKeeper
-        serviceRegistry.register("HelloService", serviceAddress);
+        serviceRegistry.register(serviceName, serviceAddress);
 
         // 注册本地服务
         LocalServiceRegistry.getInstance().register("HelloService", new HelloServiceImpl());
@@ -57,9 +56,10 @@ public class RpcServer {
                         // SocketChannel 连接到TCP网络套接字的通道 面向流连接
                         // 这里就是把SocketChannel 通过自定义方法进行操作 比如自定义处理器
                         protected void initChannel(SocketChannel ch) {
+                            // 接收客户端心跳信息
+                            ch.pipeline().addLast(new IdleStateHandler(10, 0, 0, TimeUnit.SECONDS));
                             ch.pipeline().addLast(new RpcMessageDecoder(serializer, RpcMessage.class));
                             ch.pipeline().addLast(new RpcMessageEncoder(serializer));
-                            ch.pipeline().addLast(new IdleStateHandler(30, 0, 0, TimeUnit.SECONDS));
                             ch.pipeline().addLast(new RpcServerHandler(serviceDiscovery, serializer)); // 自定义处理器
                         }
                     });

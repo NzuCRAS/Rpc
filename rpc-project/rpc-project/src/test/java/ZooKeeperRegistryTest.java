@@ -7,8 +7,8 @@ public class ZooKeeperRegistryTest {
         String zooKeeperHost = "127.0.0.1:2181";
 
         // 启动服务端
-        RpcServer rpcServer = new RpcServer(8080, zooKeeperHost);
-        rpcServer.start();
+        RpcServer rpcServer = new RpcServer(8080, zooKeeperHost, new JsonSerializer());
+        rpcServer.start("serviceName");
 
         // 启动客户端
         RpcClient rpcClient = new RpcClient(zooKeeperHost, new JsonSerializer());
