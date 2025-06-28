@@ -1,7 +1,12 @@
+import com.alibaba.csp.sentinel.slots.block.flow.FlowRule;
 import com.example.rpc.client.RpcClient;
 import com.example.rpc.protocol.JsonSerializer;
 import com.example.rpc.protocol.RpcMessage;
 import com.example.rpc.server.RpcServer;
+import com.example.rpc.stability.SentinelRuleZkManager;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class RpcTimeoutAndHeartbeatTest {
     public static void main(String[] args) throws Exception {
@@ -26,6 +31,17 @@ public class RpcTimeoutAndHeartbeatTest {
         RpcClient rpcClient = new RpcClient(zooKeeperHost, new JsonSerializer());
         rpcClient.connect(serviceName);
 
+        // 推送规则
+        List<FlowRule> rules = new ArrayList<>();
+
+        FlowRule rule = new FlowRule();
+        rule.setResource("HelloService_sayHello");
+        rule.setGrade(1); // 1 表示QPS
+        rule.setCount(2); // 每秒最大2次
+        rules.add(rule);
+
+        SentinelRuleZkManager.pushRules(rules);
+
         // 4. 发送正常请求
         RpcMessage request = new RpcMessage();
         request.setType("request");
@@ -33,7 +49,7 @@ public class RpcTimeoutAndHeartbeatTest {
         request.setServiceName(serviceName);
         request.setParams(new Object[]{"world"});
         try {
-            RpcMessage response = rpcClient.sendRequest(request);
+            RpcMessage response = rpcClient.sendRequestWithRetry(request, 3, 2000);
             System.out.println("Response: " + response);
         } catch (Exception e) {
             System.out.println("Error:" + e);

@@ -6,6 +6,7 @@ import com.example.rpc.registry.ServiceRegistry;
 import com.example.rpc.registry.ZooKeeperServiceDiscovery;
 import com.example.rpc.registry.ZooKeeperServiceRegistry;
 import com.example.rpc.service.HelloServiceImpl;
+import com.example.rpc.stability.SentinelRuleZkManager;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -22,7 +23,7 @@ public class RpcServer {
     private final int port; // 端口号
     private final ServiceRegistry serviceRegistry; // 实现注册服务 用这个给注册表管理可用的服务
     private final ServiceDiscovery serviceDiscovery; // 实例发现
-    private final Serializer serializer; // 网络通信时学历恶化工具
+    private final Serializer serializer; // 网络通信时序列化工具
 
     public RpcServer(int port, String zooKeeperAddress, Serializer serializer) throws Exception {
         this.port = port;
@@ -39,7 +40,10 @@ public class RpcServer {
         serviceRegistry.register(serviceName, serviceAddress);
 
         // 注册本地服务
-        LocalServiceRegistry.getInstance().register("HelloService", new HelloServiceImpl());
+        LocalServiceRegistry.getInstance().register(serviceName, new HelloServiceImpl());
+
+        // 启动Zookeeper对本地Sentinel规则的监听
+        SentinelRuleZkManager.init();
 
         // 创建两个线程组
         EventLoopGroup bossGroup = new NioEventLoopGroup(); // 负责接收客户端连接
@@ -57,10 +61,10 @@ public class RpcServer {
                         // 这里就是把SocketChannel 通过自定义方法进行操作 比如自定义处理器
                         protected void initChannel(SocketChannel ch) {
                             // 接收客户端心跳信息
-                            ch.pipeline().addLast(new IdleStateHandler(10, 0, 0, TimeUnit.SECONDS));
+                            ch.pipeline().addLast(new IdleStateHandler(10, 5, 0, TimeUnit.SECONDS));
                             ch.pipeline().addLast(new RpcMessageDecoder(serializer, RpcMessage.class));
                             ch.pipeline().addLast(new RpcMessageEncoder(serializer));
-                            ch.pipeline().addLast(new RpcServerHandler(serviceDiscovery, serializer)); // 自定义处理器
+                            ch.pipeline().addLast(new RpcServerHandler(serviceDiscovery)); // 自定义处理器
                         }
                     });
 

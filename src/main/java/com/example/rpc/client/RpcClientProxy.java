@@ -44,7 +44,7 @@ public class RpcClientProxy {
                 request.setParams(args);
 
                 // 通过代理的rpcClient将消息发送并返回response
-                RpcMessage response = rpcClient.sendRequest(request);
+                RpcMessage response = rpcClient.sendRequestWithRetry(request, 3, 2000);
                 if (response.getError() != null) {
                     throw new RuntimeException("Rpc Call Failed" + response.getError());
                 }
