@@ -3,7 +3,7 @@ import com.example.rpc.client.RpcClient;
 import com.example.rpc.protocol.JsonSerializer;
 import com.example.rpc.protocol.RpcMessage;
 import com.example.rpc.server.RpcServer;
-import com.example.rpc.stability.SentinelRuleZkManager;
+import com.example.rpc.stability.rule.SentinelRuleZkManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +40,8 @@ public class RpcTimeoutAndHeartbeatTest {
         rule.setCount(2); // 每秒最大2次
         rules.add(rule);
 
-        SentinelRuleZkManager.pushRules(rules);
+        long ts = System.currentTimeMillis();
+        SentinelRuleZkManager.pushRules(rules, ts);
 
         // 4. 发送正常请求
         RpcMessage request = new RpcMessage();

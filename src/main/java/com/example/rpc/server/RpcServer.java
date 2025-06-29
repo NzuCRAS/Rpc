@@ -6,7 +6,7 @@ import com.example.rpc.registry.ServiceRegistry;
 import com.example.rpc.registry.ZooKeeperServiceDiscovery;
 import com.example.rpc.registry.ZooKeeperServiceRegistry;
 import com.example.rpc.service.HelloServiceImpl;
-import com.example.rpc.stability.SentinelRuleZkManager;
+import com.example.rpc.stability.rule.SentinelRuleZkManager;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
