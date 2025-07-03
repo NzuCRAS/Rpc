@@ -68,7 +68,7 @@ public class SystemRuleManager {
         rule.setHighestCpuUsage(meta.highestCpuUsage);
         rule.setQps(meta.maxQps);
         rule.setMaxThread(meta.maxThread);
-        rule.setAvgRt(meta.maxAvgRt);
+        rule.setAvgRt((long) meta.maxAvgRt);
         rules.add(rule);
         // 推送到Sentinel，复用你的ZK推送器
         SentinelRuleZkManager.pushSystemRules(rules, System.currentTimeMillis());

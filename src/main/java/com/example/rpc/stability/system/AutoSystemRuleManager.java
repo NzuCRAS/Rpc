@@ -3,6 +3,7 @@ package com.example.rpc.stability.system;
 
 
 import com.alibaba.csp.sentinel.slots.system.SystemRule;
+import com.example.rpc.metrics.StatMetricsReporter;
 import com.example.rpc.stability.rule.SentinelRuleZkManager;
 import com.example.rpc.stability.stat.ResourceStat;
 import com.example.rpc.stability.stat.ResourceStatManager;
@@ -12,10 +13,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class AutoSystemRuleManager {
-    private final long intervalMs = 60_000;
+    private final long intervalMs = 10_000;
     private final List<String> systemTypes = List.of("interface", "ip", "parameter");
 
-    public void start() {
+    public void start() throws Exception {
+        System.out.println("AutoSystemRuleManager start");
+        SystemRuleMetaManager.init();
         Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {
             try {
                 List<SystemRule> rules = new ArrayList<>();
@@ -44,6 +47,9 @@ public class AutoSystemRuleManager {
                 }
                 long ts = System.currentTimeMillis();
                 SentinelRuleZkManager.pushSystemRules(rules, ts);
+
+                System.out.println("[AutoSystemRuleManager] Pushed rules at " + ts + ": " + rules);
+                StatMetricsReporter.reportAll();
             } catch (Exception e) {
                 e.printStackTrace();
             }

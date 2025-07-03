@@ -1,6 +1,7 @@
 package com.example.rpc.stability.flow;
 
 import com.alibaba.csp.sentinel.slots.block.flow.FlowRule;
+import com.example.rpc.metrics.StatMetricsReporter;
 import com.example.rpc.stability.stat.ResourceStat;
 import com.example.rpc.stability.stat.ResourceStatManager;
 import com.example.rpc.stability.rule.SentinelRuleZkManager;
@@ -15,7 +16,7 @@ import java.util.concurrent.TimeUnit;
  * 定时汇总各粒度的统计数据，自动生成限流规则并推送到配置中心
  */
 public class AutoFlowRuleManager {
-    private final long intervalMs = 60_000; // 推送周期
+    private final long intervalMs = 10_000; // 推送周期
     // 需要限流的粒度类型，可扩展
     private final List<String> limitTypes = List.of("interface", "ip", "parameter");
 
@@ -73,6 +74,7 @@ public class AutoFlowRuleManager {
     }
 
     public void start() {
+        System.out.println("AutoFlowRuleManager start");
         Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {
             try {
                 List<FlowRule> rules = new ArrayList<>();
@@ -108,6 +110,7 @@ public class AutoFlowRuleManager {
                 long ts = System.currentTimeMillis();
                 SentinelRuleZkManager.pushRules(rules, ts);
                 System.out.println("[AutoFlowRuleManager] Pushed rules at " + ts + ": " + rules);
+                StatMetricsReporter.reportAll();
             } catch (Exception e) {
                 e.printStackTrace();
             }

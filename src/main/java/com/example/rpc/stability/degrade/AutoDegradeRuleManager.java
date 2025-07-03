@@ -2,6 +2,7 @@ package com.example.rpc.stability.degrade;
 
 import com.alibaba.csp.sentinel.slots.block.degrade.DegradeRule;
 import com.alibaba.csp.sentinel.slots.block.RuleConstant;
+import com.example.rpc.metrics.StatMetricsReporter;
 import com.example.rpc.stability.rule.SentinelRuleZkManager;
 import com.example.rpc.stability.stat.ResourceStat;
 import com.example.rpc.stability.stat.ResourceStatManager;
@@ -16,10 +17,12 @@ import java.util.concurrent.TimeUnit;
  * 集成动态热更新配置
  */
 public class AutoDegradeRuleManager {
-    private final long intervalMs = 60_000;
+    private final long intervalMs = 10_000;
     private final List<String> degradeTypes = List.of("interface", "ip", "parameter");
 
-    public void start() {
+    public void start() throws Exception {
+        System.out.println("AutoDegradeRuleManager start");
+        DegradeMetaManager.init();
         Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {
             try {
                 List<DegradeRule> rules = new ArrayList<>();
@@ -62,6 +65,7 @@ public class AutoDegradeRuleManager {
                 long ts = System.currentTimeMillis();
                 SentinelRuleZkManager.pushDegradeRules(rules, ts);
                 System.out.println("[AutoDegradeRuleManager] Pushed degrade rules at " + ts + ": " + rules);
+                StatMetricsReporter.reportAll();
             } catch (Exception e) {
                 e.printStackTrace();
             }

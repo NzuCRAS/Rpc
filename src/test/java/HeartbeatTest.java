@@ -9,6 +9,6 @@ public class HeartbeatTest {
     @Test
     public void test() throws Exception {
         RpcServer rpcServer = new RpcServer(8080, zooKeeperHost, new JsonSerializer());
-        rpcServer.start("TestService");
+        rpcServer.start("HelloService");
     }
 }

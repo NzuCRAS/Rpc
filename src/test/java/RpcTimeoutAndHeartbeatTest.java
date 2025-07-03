@@ -13,6 +13,9 @@ public class RpcTimeoutAndHeartbeatTest {
         String zooKeeperHost = "127.0.0.1:2181";
         String serviceName = "HelloService";
 
+        // 启动prometheus监控
+
+
         // 1. 启动服务端（用线程异步）
         RpcServer rpcServer = new RpcServer(8080, zooKeeperHost, new JsonSerializer());
         new Thread(() -> {
@@ -40,6 +43,7 @@ public class RpcTimeoutAndHeartbeatTest {
         rule.setCount(2); // 每秒最大2次
         rules.add(rule);
 
+        System.out.println("rules");
         long ts = System.currentTimeMillis();
         SentinelRuleZkManager.pushRules(rules, ts);
 
@@ -50,7 +54,8 @@ public class RpcTimeoutAndHeartbeatTest {
         request.setServiceName(serviceName);
         request.setParams(new Object[]{"world"});
         try {
-            RpcMessage response = rpcClient.sendRequestWithRetry(request, 3, 2000);
+            System.out.println("send request");
+            RpcMessage response = rpcClient.sendRequestWithRetry(request, 3, 1000);
             System.out.println("Response: " + response);
         } catch (Exception e) {
             System.out.println("Error:" + e);
@@ -58,7 +63,7 @@ public class RpcTimeoutAndHeartbeatTest {
 
         // 4. 只要客户端连着，不发请求，观察心跳机制日志
         System.out.println("观察心跳机制，请手动查看服务端和客户端日志输出");
-        Thread.sleep(10000); // 观察10s
+        Thread.sleep(60000); // 观察10s
         rpcServer.stop();
         rpcClient.close();
     }

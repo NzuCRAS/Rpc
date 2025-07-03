@@ -4,6 +4,8 @@ import com.alibaba.csp.sentinel.Entry;
 import com.alibaba.csp.sentinel.SphU;
 import com.alibaba.csp.sentinel.context.ContextUtil;
 import com.alibaba.csp.sentinel.slots.block.BlockException;
+import com.example.rpc.metrics.MetricsCollector;
+import com.example.rpc.metrics.StatMetricsReporter;
 import com.example.rpc.protocol.RpcMessage;
 import com.example.rpc.registry.ServiceDiscovery;
 import com.example.rpc.stability.flow.ParamLimitManager;
@@ -50,6 +52,8 @@ public class RpcServerHandler extends SimpleChannelInboundHandler<RpcMessage> {
         String resourceName = msg.getServiceName() + "_" + msg.getMethodName();
         String clientIp = getClientIp(ctx);
 
+        MetricsCollector metricsCollector = new MetricsCollector();
+
         // 1. IP级限流（推荐用 Sentinel 统一入口）
         String ipResource = "ip:" + clientIp;
         try (Entry ipEntry = SphU.entry(ipResource)) {
@@ -83,6 +87,7 @@ public class RpcServerHandler extends SimpleChannelInboundHandler<RpcMessage> {
                             Method method = service.getClass().getMethod(msg.getMethodName(), String.class);
                             Object result = method.invoke(service, msg.getParams());
                             response.setResult(result);
+
                             success = true;
                         } catch (Exception e) {
                             response.setError(e.getMessage());
@@ -108,6 +113,8 @@ public class RpcServerHandler extends SimpleChannelInboundHandler<RpcMessage> {
                     busyResponse.setError("接口级限流，请稍后再试");
                     ctx.writeAndFlush(busyResponse);
                     ResourceStatManager.record("interface", resourceName, 0, false, true); // 埋点
+                    StatMetricsReporter.reportFlowBlock("interface", resourceName);
+                    System.out.println("interface metrics");
                 }
             } catch (BlockException ex) {
                 // 参数级被限流
@@ -121,6 +128,8 @@ public class RpcServerHandler extends SimpleChannelInboundHandler<RpcMessage> {
                     ResourceStatManager.record("parameter", paramStr, 0, false, true);
                     // 统计参数热度
                     ParamLimitManager.recordParam(paramStr);
+                    StatMetricsReporter.reportFlowBlock("parameter", paramStr);
+                    System.out.println("parameter metrics");
                 }
             } finally {
                 for (Entry entry : paramEntries) {
@@ -135,6 +144,8 @@ public class RpcServerHandler extends SimpleChannelInboundHandler<RpcMessage> {
             busyResponse.setError("IP限流，请稍后再试");
             ctx.writeAndFlush(busyResponse);
             ResourceStatManager.record("ip", clientIp, 0, false, true);
+            StatMetricsReporter.reportFlowBlock("ip", clientIp);
+            System.out.println("ip metrics");
         } finally {
             ContextUtil.exit();
         }

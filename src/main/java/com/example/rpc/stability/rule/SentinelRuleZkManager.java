@@ -6,6 +6,10 @@ import com.alibaba.csp.sentinel.slots.block.flow.FlowRule;
 import com.alibaba.csp.sentinel.slots.block.flow.FlowRuleManager;
 import com.alibaba.csp.sentinel.slots.system.SystemRule;
 import com.example.rpc.protocol.JsonSerializer;
+import com.example.rpc.stability.degrade.AutoDegradeRuleManager;
+import com.example.rpc.stability.flow.AutoFlowRuleManager;
+import com.example.rpc.stability.system.AutoSystemRuleManager;
+import com.example.rpc.stability.system.SystemRuleManager;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.cache.CuratorCache;
@@ -24,6 +28,8 @@ public class SentinelRuleZkManager {
     private static final String META_PATH = "/sentinel/rpc-limit-rules-meta";
     private static final String DEGRADE_RULE_PATH = "/sentinel/rpc-degrade-rules";
     private static final String DEGRADE_META_PATH = "/sentinel/rpc-degrade-rules-meta";
+    private static final String SYSTEM_RULE_PATH = "/sentinel/rpc-system-rules";
+    private static final String SYSTEM_META_PATH = "/sentinel/rpc-system-rules-meta";
     private static CuratorFramework zkClient;
     private static final JsonSerializer serializer = new JsonSerializer();
     public enum RuleType { FLOW, DEGRADE, SYSTEM }
@@ -36,16 +42,44 @@ public class SentinelRuleZkManager {
         zkClient.start();
         // 创建节点（如不存在），便于后续管理
         if (zkClient.checkExists().forPath(RULE_PATH) == null) {
+            System.out.println("flow rule has not been created");
             zkClient.create().creatingParentContainersIfNeeded().forPath(RULE_PATH, "[]".getBytes(StandardCharsets.UTF_8));
         }
         if (zkClient.checkExists().forPath(META_PATH) == null) {
+            System.out.println("flow meta has not been created");
             zkClient.create().creatingParentContainersIfNeeded().forPath(META_PATH, "".getBytes(StandardCharsets.UTF_8));
+        }
+        if (zkClient.checkExists().forPath(SYSTEM_RULE_PATH) == null) {
+            System.out.println("system rule has not been created");
+            zkClient.create().creatingParentContainersIfNeeded().forPath(SYSTEM_RULE_PATH, "[]".getBytes(StandardCharsets.UTF_8));
+        }
+        if (zkClient.checkExists().forPath(SYSTEM_META_PATH) == null) {
+            System.out.println("system meta has not been created");
+            zkClient.create().creatingParentContainersIfNeeded().forPath(SYSTEM_META_PATH, "".getBytes(StandardCharsets.UTF_8));
+        }
+        if (zkClient.checkExists().forPath(DEGRADE_RULE_PATH) == null) {
+            System.out.println("degrade rule has not been created");
+            zkClient.create().creatingParentContainersIfNeeded().forPath(DEGRADE_RULE_PATH, "[]".getBytes(StandardCharsets.UTF_8));
+        }
+        if (zkClient.checkExists().forPath(DEGRADE_META_PATH) == null) {
+            System.out.println("degrade meta has not been created");
+            zkClient.create().creatingParentContainersIfNeeded().forPath(DEGRADE_META_PATH, "[]".getBytes(StandardCharsets.UTF_8));
         }
         // 启动监听
         watchRuleNode();
+        watchDegradeRuleNode();
+        watchSystemRuleNode();
         // 启动时先拉取一次规则
         refreshRules();
         refreshDegradeRules();
+        refreshSystemRules();
+        // 启动自动规则制定与创建
+        AutoFlowRuleManager autoFlowRuleManager = new AutoFlowRuleManager();
+        AutoDegradeRuleManager autoDegradeRuleManager = new AutoDegradeRuleManager();
+        AutoSystemRuleManager autoSystemRuleManager = new AutoSystemRuleManager();
+        autoSystemRuleManager.start();
+        autoFlowRuleManager.start();
+        autoDegradeRuleManager.start();
     }
 
     private static void watchRuleNode() {
@@ -77,13 +111,42 @@ public class SentinelRuleZkManager {
         }
     }
 
+    // 推送规则并写入更新时间戳
+    public static void pushRules(List<FlowRule> rules, long ts) {
+        try {
+            byte[] rulesBytes = serializer.serialize(rules);
+            zkClient.setData().forPath(RULE_PATH, rulesBytes);
+            // 附加更新时间戳
+            zkClient.setData().forPath(META_PATH, String.valueOf(ts).getBytes(StandardCharsets.UTF_8));
+            System.out.println("[Sentinel] Pushed rules at " + ts + ": " + rules);
+        } catch (Exception e) {
+            System.err.println("[Sentinel] push flow rules failed " + e.getMessage());
+        }
+    }
+
+    private static void watchDegradeRuleNode() {
+        CuratorCache curatorCache = CuratorCache.build(zkClient, DEGRADE_RULE_PATH);
+        curatorCache.listenable().addListener(
+                CuratorCacheListener.builder()
+                        .forPathChildrenCache(DEGRADE_RULE_PATH, zkClient, (client, event) -> {})
+                        .forCreatesAndChanges((childData, event) -> {
+                            if (childData != null && childData.getPath().equals(DEGRADE_RULE_PATH)) {
+                                refreshDegradeRules();
+                            }
+                        })
+                        .build()
+        );
+        curatorCache.start();
+    }
+
     public static void pushDegradeRules(List<DegradeRule> rules, long ts) {
         try {
             byte[] rulesBytes = serializer.serialize(rules);
             zkClient.setData().forPath(DEGRADE_RULE_PATH, rulesBytes);
             zkClient.setData().forPath(DEGRADE_META_PATH, String.valueOf(ts).getBytes(StandardCharsets.UTF_8));
+            System.out.println("[Sentinel] Dynamic Degrade Rule Update: " + rules);
         } catch (Exception e) {
-            System.err.println("[Sentinel] 推送熔断规则失败: " + e.getMessage());
+            System.err.println("[Sentinel] push degrade rules failed: " + e.getMessage());
         }
     }
 
@@ -99,19 +162,45 @@ public class SentinelRuleZkManager {
         }
     }
 
-    // 推送规则并写入更新时间戳
-    public static void pushRules(List<FlowRule> rules, long ts) {
+
+
+    private static void watchSystemRuleNode() {
+        CuratorCache curatorCache = CuratorCache.build(zkClient, SYSTEM_RULE_PATH);
+        curatorCache.listenable().addListener(
+                CuratorCacheListener.builder()
+                        .forPathChildrenCache(SYSTEM_RULE_PATH, zkClient, (client, event) -> {})
+                        .forCreatesAndChanges((childData, event) -> {
+                            if (childData != null && childData.getPath().equals(SYSTEM_RULE_PATH)) {
+                                refreshSystemRules();
+                            }
+                        })
+                        .build()
+        );
+        curatorCache.start();
+    }
+
+    private static void refreshSystemRules() {
         try {
-            byte[] rulesBytes = serializer.serialize(rules);
-            zkClient.setData().forPath(RULE_PATH, rulesBytes);
-            // 附加更新时间戳
-            zkClient.setData().forPath(META_PATH, String.valueOf(ts).getBytes(StandardCharsets.UTF_8));
+            byte[] data = zkClient.getData().forPath(SYSTEM_RULE_PATH);
+            List<SystemRule> rules = serializer.listDeserialize(data, SystemRule.class);
+            com.alibaba.csp.sentinel.slots.system.SystemRuleManager.loadRules(
+                    !rules.isEmpty() ? rules : Collections.emptyList()
+            );
+            System.out.println("[Sentinel] Dynamic System Rule Update: " + rules);
         } catch (Exception e) {
-            System.err.println("[Sentinel] 推送限流规则失败: " + e.getMessage());
+            System.err.println("[Sentinel] Pull / Parse System Rule Failed: " + e.getMessage());
         }
     }
 
-    public static void pushSystemRules(List<SystemRule> rules, long ts) {
 
+    public static void pushSystemRules(List<SystemRule> rules, long ts) {
+        try {
+            byte[] rulesBytes = serializer.serialize(rules);
+            zkClient.setData().forPath(SYSTEM_RULE_PATH, rulesBytes);
+            zkClient.setData().forPath(SYSTEM_META_PATH, String.valueOf(ts).getBytes(StandardCharsets.UTF_8));
+            System.out.println("[Sentinel] Dynamic System Rule Update: " + rules);
+        } catch (Exception e) {
+            System.err.println("[Sentinel] push system rules failed: " + e.getMessage());
+        }
     }
 }

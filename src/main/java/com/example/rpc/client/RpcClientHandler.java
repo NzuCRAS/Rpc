@@ -42,6 +42,7 @@ public class RpcClientHandler extends ChannelInboundHandlerAdapter {
 
         // 业务处理
         System.out.println("Client receive response" + response);
+        rpcClient.receiveRequest(response);
     }
 
     @Override // 处理心跳
